@@ -1,0 +1,3 @@
+member 1: Maximilian Schwingel
+member 2: Connor Groeling
+member 3: Laurenz von Schilgen
