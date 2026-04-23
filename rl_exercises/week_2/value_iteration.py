@@ -65,13 +65,13 @@ class ValueIteration(AbstractAgent):
             return
 
         # TODO: Call value_iteration() with the MDP components
-        V_opt, pi_opt = None, None  # placeholder
+        V_opt, pi_opt = value_iteration(T = self.T, R_sa = self.R_sa, gamma = self.gamma)
 
         self.V = V_opt
         self.pi = pi_opt
         printr("Converged V:", self.V)
         printr("Derived policy π:", self.pi)
-        # self.policy_fitted = True # TODO: uncomment this after implementation
+        self.policy_fitted = True # TODO: uncomment this after implementation
 
     def predict_action(
         self,
@@ -84,7 +84,8 @@ class ValueIteration(AbstractAgent):
             self.update_agent()
 
         # TODO: Return action from learned policy
-        raise NotImplementedError("predict_action() is not implemented.")
+        a = self.pi[observation]
+        return a, info
 
 
 def value_iteration(
@@ -122,13 +123,47 @@ def value_iteration(
     pi : np.ndarray, shape (n_states,)
         Greedy policy w.r.t. V, with random tie‐breaking.
     """
+
     n_states, n_actions = R_sa.shape
+
     V = np.zeros(n_states, dtype=float)
-    # rng = np.random.default_rng(seed)  uncomment this
-    pi = None
+    Q = np.zeros((n_states, n_actions), dtype=float)
 
-    # TODO: update V using the Q values until convergence
+    rng = np.random.default_rng(seed)
 
-    # TODO: Extract the greedy policy from V and update pi
+    while True:
+        delta = 0.0
+        V_new = np.copy(V)
+
+        # ---- Bellman Update ----
+        for s in range(n_states):
+
+            for a in range(n_actions):
+                value = 0.0
+
+                for s_next in range(n_states):
+                    value += T[s, a, s_next] * (
+                        R_sa[s, a] + gamma * V[s_next]
+                    )
+
+                Q[s, a] = value
+
+            V_new[s] = np.max(Q[s])
+            delta = max(delta, abs(V_new[s] - V[s]))
+
+        V = V_new
+
+        if delta < epsilon:
+            break
+
+    pi = np.zeros(n_states, dtype=int)
+
+    for s in range(n_states):
+        q_vals = Q[s]
+
+        max_q = np.max(q_vals)
+        best_actions = np.where(q_vals == max_q)[0]
+
+        pi[s] = rng.choice(best_actions)
 
     return V, pi
