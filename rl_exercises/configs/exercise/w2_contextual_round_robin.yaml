@@ -1,0 +1,17 @@
+# @package _global_
+defaults:
+  - ../agent: random
+
+env_name: ContextualMarsRover
+env_kwargs:
+  round_robin_context: true
+  # Section 6.4-style train set (default 3×3 grid). Omit to cycle all 9 joint contexts.
+  # Modes: A = full product train, B = small 2×2 product, C = four corners (non-convex).
+  context_protocol:
+    mode: B
+    include_validation: false
+training_steps: 400
+batch_size: 999999999
+eval_every_n_steps: 200
+n_eval_episodes: 2
+update_after_episode_end: false

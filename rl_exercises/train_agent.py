@@ -19,7 +19,15 @@ from omegaconf import DictConfig, OmegaConf
 from rich import print as printr
 from rl_exercises.agent import AbstractAgent, RandomAgent
 from rl_exercises.agent.buffer import SimpleBuffer
-from rl_exercises.environments import MarsRover
+from rl_exercises.environments import (
+    ContextualMarsRover,
+    MarsRover,
+    RoundRobinJointContextWrapper,
+)
+from rl_exercises.week_2.context_sets import (
+    default_three_by_three_example,
+    summarize_protocol,
+)
 from rl_exercises.week_2.policy_iteration import PolicyIteration
 from rl_exercises.week_2.value_iteration import ValueIteration
 
@@ -90,7 +98,7 @@ def train(cfg: DictConfig) -> float:
 
         if step % cfg.eval_every_n_steps == 0:
             eval_performance = evaluate(
-                make_env(cfg.env_name, cfg.env_kwargs),
+                make_env(cfg.env_name, cfg.env_kwargs, for_evaluation=True),
                 agent,
                 cfg.n_eval_episodes,
                 cfg.seed,
@@ -106,7 +114,11 @@ def train(cfg: DictConfig) -> float:
     pd.DataFrame(eval_reward_buffer).to_csv(
         os.path.abspath("eval_rewards.csv"), index=False
     )
-    final_eval = evaluate(env, agent, cfg.n_eval_episodes)
+    final_eval = evaluate(
+        make_env(cfg.env_name, cfg.env_kwargs, for_evaluation=True),
+        agent,
+        cfg.n_eval_episodes,
+    )
     print(f"Final eval reward was: {final_eval}")
     return final_eval
 
@@ -193,30 +205,98 @@ def evaluate(
     return np.mean(episode_rewards)
 
 
-def make_env(env_name: str, env_kwargs: dict = {}) -> gym.Env:
+def _env_kwargs_as_dict(env_kwargs: Any) -> dict[str, Any]:
+    if env_kwargs is None:
+        return {}
+    if OmegaConf.is_config(env_kwargs):
+        return OmegaConf.to_container(env_kwargs, resolve=True)  # type: ignore[assignment]
+    return dict(env_kwargs)
+
+
+def _resolve_train_joint_context_schedule(
+    env_kwargs: dict[str, Any],
+) -> tuple[list[int] | None, dict[str, Any] | None]:
+    """Section 6.4-style train joint indices for :class:`RoundRobinJointContextWrapper`.
+
+    ``env_kwargs`` may contain:
+
+    - ``context_protocol``: ``{"mode": "A"|"B"|"C", "include_validation": bool}`` using
+      the default 3×3 grid from :func:`~rl_exercises.week_2.context_sets.default_three_by_three_example`.
+    - ``train_joint_context_indices``: explicit list of ``joint_context_index`` values.
+
+    If both are set, ``context_protocol`` wins. Keys are popped by the caller.
+    """
+    protocol_cfg = env_kwargs.get("context_protocol")
+    explicit = env_kwargs.get("train_joint_context_indices")
+    if protocol_cfg is not None:
+        if OmegaConf.is_config(protocol_cfg):
+            protocol_cfg = OmegaConf.to_container(protocol_cfg, resolve=True)  # type: ignore[assignment]
+        if not isinstance(protocol_cfg, dict):
+            raise TypeError("env_kwargs['context_protocol'] must be a mapping with a 'mode' key.")
+        mode = protocol_cfg["mode"]
+        include_val = bool(protocol_cfg.get("include_validation", False))
+        proto = default_three_by_three_example(
+            mode,  # type: ignore[arg-type]
+            include_validation=include_val,
+        )
+        meta = {"context_protocol": dict(protocol_cfg), **summarize_protocol(proto)}
+        return proto.train_joint_indices.tolist(), meta
+    if explicit is not None:
+        if OmegaConf.is_config(explicit):
+            explicit = OmegaConf.to_container(explicit, resolve=True)  # type: ignore[assignment]
+        return [int(x) for x in explicit], None  # type: ignore[union-attr]
+    return None, None
+
+
+def make_env(
+    env_name: str,
+    env_kwargs: Any = None,
+    *,
+    for_evaluation: bool = False,
+) -> gym.Env:
     """Make environment based on name and kwargs.
 
     Parameters
     ----------
     env_name : str
         Environment name
-    env_kwargs : dict, optional
-        Optional env config, by default {}
+    env_kwargs : dict or DictConfig, optional
+        Optional env config, by default {}. For ``ContextualMarsRover`` you may set
+        ``context_protocol`` (``{"mode": "A"|"B"|"C", "include_validation": bool}``) and/or
+        ``train_joint_context_indices`` to restrict round-robin training to a train set;
+        see :mod:`rl_exercises.week_2.context_sets`.
+    for_evaluation : bool, optional
+        If True, ``round_robin_context`` is ignored so evaluation uses a fixed
+        default context unless you pass explicit ``options`` on ``reset``.
 
     Returns
     -------
     gym.Env
         Instantiated env
     """
+    kwargs = _env_kwargs_as_dict(env_kwargs)
     if env_name == "MarsRover":
-        env = MarsRover(**env_kwargs)
+        env = MarsRover(**kwargs)
         # env = TimeLimit(env, max_episode_steps=env.horizon)
+    elif env_name == "ContextualMarsRover":
+        rr = bool(kwargs.pop("round_robin_context", False)) and not for_evaluation
+        train_schedule, protocol_meta = _resolve_train_joint_context_schedule(kwargs)
+        kwargs.pop("context_protocol", None)
+        kwargs.pop("train_joint_context_indices", None)
+        env = ContextualMarsRover(**kwargs)
+        if rr:
+            env = RoundRobinJointContextWrapper(
+                env,
+                joint_context_indices=train_schedule,
+            )
+        if protocol_meta is not None and not for_evaluation:
+            printr("[ContextualMarsRover] train/test protocol summary:", protocol_meta)
     elif "MiniGrid" in env_name:
-        env = gym.make(env_name, **env_kwargs)
+        env = gym.make(env_name, **kwargs)
         # env = RGBImgObsWrapper(env)
         env = FlatObsWrapper(env)
     else:
-        env = gym.make(env_name, **env_kwargs)
+        env = gym.make(env_name, **kwargs)
     env = Monitor(env, filename="train")
     return env
 

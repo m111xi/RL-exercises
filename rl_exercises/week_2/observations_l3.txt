@@ -1,0 +1,31 @@
+Observations Level 3 (Mode B, Contextual MarsRover)
+NOTE: We used LLMs to help us Code Level 3, almost all code was AI generated. But we still came up with the contectual features and the general concept.
+
+We defined train/test/(optional) validation context sets like in Sec. 6.4: interpolation if at least one context feature lies within the train marginal support, extrapolation if both features are outside. Here the training set was joints [0, 3] (friction indices {0,1} and horizon index {0}).
+
+Comparing blind (one policy trained on the mixture MDP of the train contexts) vs oracle (optimal policy computed per context), we see:
+
+On many interpolation contexts the gap is small to moderate (e.g., joints 3/4/5: ~5–13).
+There is a large failure case even within interpolation: joint 6 is labeled interpolation, but blind ≈ 8 vs oracle ≈ 85 (gap ≈ 77). So “interpolation” by the marginal-overlap definition does not guarantee good performance when the other feature shifts strongly.
+On extrapolation contexts (joints 7/8) the gap is largest (≈ 42 and ≈ 127), consistent with the idea that performance drops most outside the training distribution.
+Negative gaps (oracle < blind) on a few contexts are likely due to rollout noise / limited evaluation episodes rather than the oracle being truly worse.
+
+RESULTS: 
+C:\Users\maxim\Desktop\GitHub\RL-exercises>python -m rl_exercises.week_2.contextual_tabular
+Protocol mode: B | train joints: [0, 3]
+Blind (mixture-MDP) policy -- mean return on each context:
+
+--- TEST ---
+  joint= 0  interpolation     blind=  52.300  oracle=  52.300  gap=   0.000
+  joint= 1  interpolation     blind=  29.150  oracle=  26.475  gap=  -2.675
+  joint= 2  interpolation     blind=  87.500  oracle=  89.525  gap=   2.025
+  joint= 3  interpolation     blind=  18.125  oracle=  23.325  gap=   5.200
+  joint= 4  interpolation     blind=   8.225  oracle=  14.200  gap=   5.975
+  joint= 5  interpolation     blind=  23.700  oracle=  36.575  gap=  12.875
+  joint= 6  interpolation     blind=   8.275  oracle=  85.500  gap=  77.225
+  joint= 7  extrapolation     blind=   4.700  oracle=  46.250  gap=  41.550
+  joint= 8  extrapolation     blind=  14.375  oracle= 141.500  gap= 127.125
+
+--- VALIDATION ---
+  joint= 6  interpolation     blind=   8.550  oracle=  85.500  gap=  76.950
+  joint= 2  interpolation     blind=  97.150  oracle=  89.525  gap=  -7.625

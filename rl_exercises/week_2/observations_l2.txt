@@ -1,0 +1,5 @@
+Level 2 — step() vs known dynamics
+
+Policy iteration and value iteration both need the transition matrix and the rewards (or at least the expected reward for each state-action pair). That is how the Bellman update works: you sum over all possible next states weighted by the probability.
+If you only have step(), you get one sample: you see one next state and one reward, not the full distribution. So you cannot plug that straight into the same formulas as in the code. The algorithms as we implemented them basically assume you already know P and R.
+They do not "just work" with only step(). Atleast that is iwth out changing the code from a model-based to a model-free RL. 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any, SupportsFloat
 
 import gymnasium as gym
@@ -244,6 +245,210 @@ class MarsRover(gym.Env):
             Render mode (only "human" is supported).
         """
         print(f"[MarsRover] pos={self.position}, steps={self.current_steps}")
+
+
+class ContextualMarsRover(MarsRover):
+    """MarsRover with episode-level **ground friction** and **horizon** contexts.
+
+    Friction is mapped to the same ``transition_probabilities`` mechanism as the
+    base class: each entry ``P[s, a]`` is the probability that the commanded
+    action is executed (otherwise it is flipped). **Higher friction** means
+    **higher** follow probability for every state–action pair.
+
+    **Horizon** is the episode step limit (same as ``MarsRover.horizon``); larger
+    values give more time per episode.
+
+    At ``reset``, pass ``options`` to pick contexts, e.g.
+    ``options={"context_index": 0, "horizon_index": 1}``,
+    ``options={"friction": 0.75, "horizon": 12}``, or
+    ``options={"joint_context_index": k}`` to cycle through all
+    ``(friction, horizon)`` pairs in row-major order (friction major).
+
+    Friction values are clipped to ``[0, 1]``.
+
+    Parameters
+    ----------
+    friction_levels : sequence of float, optional
+        Discrete friction values (default: low / mid / high).
+    horizon_levels : sequence of int, optional
+        Discrete episode horizons. If omitted and ``horizon`` is the default ``10``,
+        uses ``(10, 6, 16)`` (index ``0`` matches :class:`MarsRover`). If omitted and
+        ``horizon`` is not ``10``, uses ``(horizon,)`` only.
+    rewards, horizon, seed
+        ``rewards`` and ``seed`` are forwarded unchanged.
+    """
+
+    def __init__(
+        self,
+        friction_levels: Sequence[float] | np.ndarray | None = None,
+        horizon_levels: Sequence[int] | np.ndarray | None = None,
+        rewards: list[float] | None = None,
+        horizon: int = 10,
+        seed: int | None = None,
+    ) -> None:
+        if friction_levels is None:
+            friction_levels = (0.25, 0.55, 0.95)
+        self.friction_levels = np.asarray(list(friction_levels), dtype=float)
+        if self.friction_levels.size == 0:
+            raise ValueError("friction_levels must contain at least one value")
+
+        if horizon_levels is None:
+            if int(horizon) == 10:
+                self.horizon_levels = np.asarray((10, 6, 16), dtype=int)
+            else:
+                self.horizon_levels = np.asarray([int(horizon)], dtype=int)
+        else:
+            self.horizon_levels = np.asarray(list(horizon_levels), dtype=int)
+        if self.horizon_levels.size == 0:
+            raise ValueError("horizon_levels must contain at least one value")
+        if np.any(self.horizon_levels < 1):
+            raise ValueError("horizon_levels must be positive integers")
+
+        default_rewards = [1, 0, 0, 0, 10] if rewards is None else list(rewards)
+        n = len(default_rewards)
+
+        self.context_index = 0
+        self.horizon_context_index = 0
+        self.friction = float(np.clip(self.friction_levels[0], 0.0, 1.0))
+        h0 = int(self.horizon_levels[0])
+        p0 = np.full((n, 2), self.friction, dtype=float)
+
+        super().__init__(
+            transition_probabilities=p0,
+            rewards=default_rewards,
+            horizon=h0,
+            seed=seed,
+        )
+
+    def _apply_friction_to_transition_matrix(self) -> None:
+        n = self.observation_space.n
+        p = float(np.clip(self.friction, 0.0, 1.0))
+        self.P = np.full((n, 2), p, dtype=float)
+        self.transition_matrix = self.T = self.get_transition_matrix()
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        opts = options or {}
+        if "joint_context_index" in opts:
+            n_f, n_h = len(self.friction_levels), len(self.horizon_levels)
+            k = int(opts["joint_context_index"]) % (n_f * n_h)
+            self.context_index = k // n_h
+            self.horizon_context_index = k % n_h
+            self.friction = float(np.clip(self.friction_levels[self.context_index], 0.0, 1.0))
+            self.horizon = int(self.horizon_levels[self.horizon_context_index])
+        else:
+            if "context_index" in opts:
+                n_ctx = len(self.friction_levels)
+                self.context_index = int(opts["context_index"]) % n_ctx
+                self.friction = float(
+                    np.clip(self.friction_levels[self.context_index], 0.0, 1.0)
+                )
+            elif "friction" in opts:
+                self.friction = float(np.clip(float(opts["friction"]), 0.0, 1.0))
+                self.context_index = int(
+                    np.argmin(np.abs(self.friction_levels - self.friction))
+                )
+
+            if "horizon_index" in opts:
+                n_h = len(self.horizon_levels)
+                self.horizon_context_index = int(opts["horizon_index"]) % n_h
+                self.horizon = int(self.horizon_levels[self.horizon_context_index])
+            elif "horizon" in opts:
+                self.horizon = max(1, int(opts["horizon"]))
+                self.horizon_context_index = int(
+                    np.argmin(np.abs(self.horizon_levels - self.horizon))
+                )
+
+        self._apply_friction_to_transition_matrix()
+        obs, info = super().reset(seed=seed, options=options)
+        out_info = dict(info)
+        out_info["friction"] = self.friction
+        out_info["context_index"] = self.context_index
+        out_info["horizon"] = self.horizon
+        out_info["horizon_context_index"] = self.horizon_context_index
+        return obs, out_info
+
+    def step(
+        self, action: int
+    ) -> tuple[int, SupportsFloat, bool, bool, dict[str, Any]]:
+        obs, reward, terminated, truncated, info = super().step(action)
+        out_info = dict(info)
+        out_info["friction"] = self.friction
+        out_info["context_index"] = self.context_index
+        out_info["horizon"] = self.horizon
+        out_info["horizon_context_index"] = self.horizon_context_index
+        return obs, reward, terminated, truncated, out_info
+
+
+_CONTEXT_OPTION_KEYS = frozenset(
+    {
+        "joint_context_index",
+        "context_index",
+        "friction",
+        "horizon_index",
+        "horizon",
+    }
+)
+
+
+class RoundRobinJointContextWrapper(gym.Wrapper):
+    """Cycles friction×horizon contexts on every ``reset`` during training.
+
+    Each call to ``reset`` without explicit context fields in ``options`` sets
+    ``joint_context_index``. By default this cycles ``0, 1, …, n_friction * n_horizon - 1``
+    (wrapping). Pass ``joint_context_indices`` to restrict training to a Section 6.4-style
+    **train** set (e.g. a product of index ranges or a sparse mode-C list).
+
+    If any of
+    ``joint_context_index``, ``context_index``, ``friction``, ``horizon_index``,
+    or ``horizon`` is already present in ``options``, it is passed through unchanged
+    (for evaluation or manual control).
+
+    Wrap a :class:`ContextualMarsRover` (typically inside :class:`gymnasium.wrappers.Monitor`).
+    """
+
+    metadata = {"render_modes": ["human"]}
+
+    def __init__(
+        self,
+        env: gym.Env,
+        joint_context_indices: Sequence[int] | np.ndarray | None = None,
+    ) -> None:
+        super().__init__(env)
+        self._joint_rr = 0
+        base = self.env.unwrapped
+        n_f = len(base.friction_levels)  # type: ignore[attr-defined]
+        n_h = len(base.horizon_levels)  # type: ignore[attr-defined]
+        n_joint = max(1, n_f * n_h)
+        if joint_context_indices is None:
+            self._schedule: np.ndarray | None = None
+        else:
+            self._schedule = np.asarray(list(joint_context_indices), dtype=int) % n_joint
+            if self._schedule.size == 0:
+                raise ValueError("joint_context_indices must be non-empty when provided")
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[Any, dict[str, Any]]:
+        opts = dict(options or {})
+        if not _CONTEXT_OPTION_KEYS.intersection(opts):
+            base = self.env.unwrapped
+            n_f = len(base.friction_levels)  # type: ignore[attr-defined]
+            n_h = len(base.horizon_levels)  # type: ignore[attr-defined]
+            n_joint = max(1, n_f * n_h)
+            if self._schedule is None:
+                opts["joint_context_index"] = self._joint_rr % n_joint
+            else:
+                opts["joint_context_index"] = int(self._schedule[self._joint_rr % len(self._schedule)])
+            self._joint_rr += 1
+        return self.env.reset(seed=seed, options=opts)
 
 
 class MarsRoverPartialObsWrapper(gym.Wrapper):
