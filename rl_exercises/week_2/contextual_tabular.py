@@ -24,7 +24,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import numpy as np
-
 from rl_exercises.environments import MarsRover
 from rl_exercises.week_2.context_sets import (
     ContextProtocol,
@@ -111,7 +110,9 @@ def mixture_transition_over_train(proto: ContextProtocol) -> np.ndarray:
     return acc / float(train_js.size)
 
 
-def train_blind_policy(proto: ContextProtocol, gamma: float, seed: int) -> PolicyIteration:
+def train_blind_policy(
+    proto: ContextProtocol, gamma: float, seed: int
+) -> PolicyIteration:
     """Policy iteration on the mixture MDP (no context in state)."""
     t_mix = mixture_transition_over_train(proto)
     ref = mars_rover_at_joint(proto, int(proto.train_joint_indices[0]))
@@ -127,7 +128,9 @@ def train_blind_policy(proto: ContextProtocol, gamma: float, seed: int) -> Polic
 def oracle_policy_at_joint(
     proto: ContextProtocol, joint: int, gamma: float, seed: int
 ) -> PolicyIteration:
-    return PolicyIteration(mars_rover_at_joint(proto, joint, seed=seed), gamma=gamma, seed=seed)
+    return PolicyIteration(
+        mars_rover_at_joint(proto, joint, seed=seed), gamma=gamma, seed=seed
+    )
 
 
 def mean_episode_return(
@@ -201,7 +204,9 @@ def run_demo(
                 oracle.update_agent()
             env = mars_rover_at_joint(proto, j, seed=seed)
             opt = mean_episode_return(env, oracle, episodes=episodes, seed=seed + j)
-            print(f"  joint={j:2d}  {lab:16s}  blind={ret:8.3f}  oracle={opt:8.3f}  gap={opt - ret:8.3f}")
+            print(
+                f"  joint={j:2d}  {lab:16s}  blind={ret:8.3f}  oracle={opt:8.3f}  gap={opt - ret:8.3f}"
+            )
         print()
 
     block("TEST", proto.test_joint_indices)

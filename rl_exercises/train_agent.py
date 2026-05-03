@@ -30,6 +30,8 @@ from rl_exercises.week_2.context_sets import (
 )
 from rl_exercises.week_2.policy_iteration import PolicyIteration
 from rl_exercises.week_2.value_iteration import ValueIteration
+from rl_exercises.week_3 import TDAgent
+from rl_exercises.week_3.epsilon_greedy_policy import EpsilonGreedyPolicy
 
 # from rl_exercises.week_4 import EpsilonGreedyPolicy as TabularEpsilonGreedyPolicy
 # from rl_exercises.week_4 import SARSAAgent
@@ -68,8 +70,13 @@ def train(cfg: DictConfig) -> float:
     elif cfg.agent == "random":
         agent = RandomAgent(env)
     else:
-        # TODO: add your agent options here
-        raise NotImplementedError
+        agent = eval(cfg.agent_class)(  # type: ignore
+            env,
+            policy=EpsilonGreedyPolicy(env, epsilon=cfg.epsilon, seed=cfg.seed),
+            alpha=cfg.alpha,
+            gamma=cfg.gamma,
+            algorithm=cfg.algorithm,
+        )
 
     buffer_cls = eval(cfg.buffer_cls)
     buffer = buffer_cls(**cfg.buffer_kwargs)
@@ -232,7 +239,9 @@ def _resolve_train_joint_context_schedule(
         if OmegaConf.is_config(protocol_cfg):
             protocol_cfg = OmegaConf.to_container(protocol_cfg, resolve=True)  # type: ignore[assignment]
         if not isinstance(protocol_cfg, dict):
-            raise TypeError("env_kwargs['context_protocol'] must be a mapping with a 'mode' key.")
+            raise TypeError(
+                "env_kwargs['context_protocol'] must be a mapping with a 'mode' key."
+            )
         mode = protocol_cfg["mode"]
         include_val = bool(protocol_cfg.get("include_validation", False))
         proto = default_three_by_three_example(

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import Any, SupportsFloat
+
+from collections.abc import Sequence
 
 import gymnasium as gym
 import numpy as np
@@ -338,7 +339,9 @@ class ContextualMarsRover(MarsRover):
             k = int(opts["joint_context_index"]) % (n_f * n_h)
             self.context_index = k // n_h
             self.horizon_context_index = k % n_h
-            self.friction = float(np.clip(self.friction_levels[self.context_index], 0.0, 1.0))
+            self.friction = float(
+                np.clip(self.friction_levels[self.context_index], 0.0, 1.0)
+            )
             self.horizon = int(self.horizon_levels[self.horizon_context_index])
         else:
             if "context_index" in opts:
@@ -427,9 +430,13 @@ class RoundRobinJointContextWrapper(gym.Wrapper):
         if joint_context_indices is None:
             self._schedule: np.ndarray | None = None
         else:
-            self._schedule = np.asarray(list(joint_context_indices), dtype=int) % n_joint
+            self._schedule = (
+                np.asarray(list(joint_context_indices), dtype=int) % n_joint
+            )
             if self._schedule.size == 0:
-                raise ValueError("joint_context_indices must be non-empty when provided")
+                raise ValueError(
+                    "joint_context_indices must be non-empty when provided"
+                )
 
     def reset(
         self,
@@ -446,7 +453,9 @@ class RoundRobinJointContextWrapper(gym.Wrapper):
             if self._schedule is None:
                 opts["joint_context_index"] = self._joint_rr % n_joint
             else:
-                opts["joint_context_index"] = int(self._schedule[self._joint_rr % len(self._schedule)])
+                opts["joint_context_index"] = int(
+                    self._schedule[self._joint_rr % len(self._schedule)]
+                )
             self._joint_rr += 1
         return self.env.reset(seed=seed, options=opts)
 

@@ -20,9 +20,10 @@ Joint indices match :class:`~rl_exercises.environments.ContextualMarsRover`:
 
 from __future__ import annotations
 
+from typing import Any, Iterable, Literal, Sequence
+
 from dataclasses import dataclass
 from itertools import product
-from typing import Any, Iterable, Literal, Sequence
 
 import numpy as np
 
@@ -33,7 +34,9 @@ def joint_index(friction_idx: int, horizon_idx: int, n_horizon: int) -> int:
     return int(friction_idx) * int(n_horizon) + int(horizon_idx)
 
 
-def split_joint_index_explicit(joint: int, n_friction: int, n_horizon: int) -> tuple[int, int]:
+def split_joint_index_explicit(
+    joint: int, n_friction: int, n_horizon: int
+) -> tuple[int, int]:
     n_joint = max(1, n_friction * n_horizon)
     k = int(joint) % n_joint
     return k // n_horizon, k % n_horizon
@@ -93,8 +96,12 @@ def train_marginals(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return (friction_idx support, horizon_idx support) implied by train joints."""
     return (
-        marginal_friction_from_joints_explicit(train_joint_indices, n_friction, n_horizon),
-        marginal_horizon_from_joints_explicit(train_joint_indices, n_friction, n_horizon),
+        marginal_friction_from_joints_explicit(
+            train_joint_indices, n_friction, n_horizon
+        ),
+        marginal_horizon_from_joints_explicit(
+            train_joint_indices, n_friction, n_horizon
+        ),
     )
 
 
@@ -134,7 +141,9 @@ class ContextProtocol:
         return int(self.horizon_levels.size)
 
     def train_marginals(self) -> tuple[np.ndarray, np.ndarray]:
-        return train_marginals(self.train_joint_indices, self.n_friction, self.n_horizon)
+        return train_marginals(
+            self.train_joint_indices, self.n_friction, self.n_horizon
+        )
 
     def label_pair(self, friction_idx: int, horizon_idx: int) -> str:
         tf, th = self.train_marginals()

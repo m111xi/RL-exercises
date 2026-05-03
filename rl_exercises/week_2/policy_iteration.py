@@ -92,7 +92,9 @@ class PolicyIteration(AbstractAgent):
         if not self.policy_fitted:
             # TODO: Call policy iteration with initialized values
             printr("Initial policy: ", self.pi)
-            Q, pi, steps = policy_iteration(self.Q, self.pi, (self.S, self.A, self.T, self.R_sa, self.gamma))
+            Q, pi, steps = policy_iteration(
+                self.Q, self.pi, (self.S, self.A, self.T, self.R_sa, self.gamma)
+            )
             self.Q = Q
             self.pi = pi
             self.steps = steps
@@ -164,13 +166,11 @@ def policy_evaluation(
         V_new = np.copy(V)
 
         for s in range(nS):
-            a = pi[s]   # Aktion laut Policy
+            a = pi[s]  # Aktion laut Policy
 
             value = 0
             for s_next in range(nS):
-                value += T[s, a, s_next] * (
-                    R_sa[s, a] + gamma * V[s_next]
-                )
+                value += T[s, a, s_next] * (R_sa[s, a] + gamma * V[s_next])
 
             V_new[s] = value
             delta = max(delta, abs(V_new[s] - V[s]))
@@ -216,7 +216,7 @@ def policy_improvement(
         for j in range(nA):
             Q_value = 0
             for k in range(nS):
-                Q_value += T[i, j, k] * (R_sa[i,j] + gamma * V[k])
+                Q_value += T[i, j, k] * (R_sa[i, j] + gamma * V[k])
             Q[i, j] = Q_value
 
     pi_new = np.zeros(nS, dtype=int)
@@ -268,6 +268,7 @@ def policy_iteration(
         pi = new_pi
         steps += 1
     return Q, pi, steps
+
 
 if __name__ == "__main__":
     algo = PolicyIteration(env=MarsRover())

@@ -65,13 +65,13 @@ class ValueIteration(AbstractAgent):
             return
 
         # TODO: Call value_iteration() with the MDP components
-        V_opt, pi_opt = value_iteration(T = self.T, R_sa = self.R_sa, gamma = self.gamma)
+        V_opt, pi_opt = value_iteration(T=self.T, R_sa=self.R_sa, gamma=self.gamma)
 
         self.V = V_opt
         self.pi = pi_opt
         printr("Converged V:", self.V)
         printr("Derived policy π:", self.pi)
-        self.policy_fitted = True # TODO: uncomment this after implementation
+        self.policy_fitted = True  # TODO: uncomment this after implementation
 
     def predict_action(
         self,
@@ -137,14 +137,11 @@ def value_iteration(
 
         # ---- Bellman Update ----
         for s in range(n_states):
-
             for a in range(n_actions):
                 value = 0.0
 
                 for s_next in range(n_states):
-                    value += T[s, a, s_next] * (
-                        R_sa[s, a] + gamma * V[s_next]
-                    )
+                    value += T[s, a, s_next] * (R_sa[s, a] + gamma * V[s_next])
 
                 Q[s, a] = value
 
