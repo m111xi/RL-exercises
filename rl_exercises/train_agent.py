@@ -30,7 +30,7 @@ from rl_exercises.week_2.context_sets import (
 )
 from rl_exercises.week_2.policy_iteration import PolicyIteration
 from rl_exercises.week_2.value_iteration import ValueIteration
-from rl_exercises.week_3 import TDAgent
+from rl_exercises.week_3 import TDAgent, TDLambdaAgent
 from rl_exercises.week_3.epsilon_greedy_policy import EpsilonGreedyPolicy
 
 # from rl_exercises.week_4 import EpsilonGreedyPolicy as TabularEpsilonGreedyPolicy
@@ -70,13 +70,16 @@ def train(cfg: DictConfig) -> float:
     elif cfg.agent == "random":
         agent = RandomAgent(env)
     else:
-        agent = eval(cfg.agent_class)(  # type: ignore
-            env,
-            policy=EpsilonGreedyPolicy(env, epsilon=cfg.epsilon, seed=cfg.seed),
-            alpha=cfg.alpha,
-            gamma=cfg.gamma,
-            algorithm=cfg.algorithm,
-        )
+        agent_kwargs = {
+            "policy": EpsilonGreedyPolicy(env, epsilon=cfg.epsilon, seed=cfg.seed),
+            "alpha": cfg.alpha,
+            "gamma": cfg.gamma,
+            "algorithm": cfg.algorithm,
+        }
+        if "lambda_" in cfg and cfg.agent_class == "TDLambdaAgent":
+            agent_kwargs["lambda_"] = cfg.lambda_
+
+        agent = eval(cfg.agent_class)(env, **agent_kwargs)  # type: ignore
 
     buffer_cls = eval(cfg.buffer_cls)
     buffer = buffer_cls(**cfg.buffer_kwargs)

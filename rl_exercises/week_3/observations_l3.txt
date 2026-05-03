@@ -1,0 +1,18 @@
+We recreated the Random Walk Environment from the Paper. 
+It's in environment.py, we used only 5 states instead of 6, but the results should be similar. 
+Then we trained the td_lambda agent on the environment.
+These were the parameters for the training:
+TRUE_STATE_VALUES = np.array([0.0, 0.25, 0.5, 0.75, 1.0], dtype=float)
+TERMINAL_STATES = {0, 4}
+LAMBDAS = [1.0, 0.9, 0.7, 0.5, 0.3, 0.1, 0.0]
+N_RUNS = 100
+EPISODES_PER_RUN = 10
+ALPHA = 0.1
+GAMMA = 1.0
+
+We then calculated the error between the trained state values and the true state values. This was done for 7 different lambdas.
+The plot is saverd in rl_excercises.examples.td_lambda_random_walk.png
+The plot is very similar to that of figure 3 in the paper. We used one single alpha value, rather than the best one.
+This was done for simplicity, but it makes the lambdas not necessarily very comparable.
+The lambda = 1 procedure (supervised learning) has a huge error. This is seen both in the paper and in our environment.
+The minimum error for alpha = 0.1 had lambda = 0.5

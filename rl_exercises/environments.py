@@ -591,3 +591,52 @@ class MarsRoverPartialObsWrapper(gym.Wrapper):
             Rendered output from the base environment.
         """
         return self.env.render(mode=mode)
+
+
+class RandomWalk(gym.Env):
+    """
+    A simple random walk environment with 5 states and 2 actions.
+
+    The agent starts in the middle state (state 2) and can move left (action 0) or right (action 1).
+    The episode ends when the agent reaches either end of the state space (state 0 or state 4).
+    Rewards are given based on the resulting state after taking an action.
+    """
+
+    metadata = {"render_modes": ["human"]}
+
+    def __init__(self, seed: int | None = None):
+        self.rng = np.random.default_rng(seed)
+
+        self.observation_space = gym.spaces.Discrete(5)
+        self.action_space = gym.spaces.Discrete(2)
+
+        self.position = 2  # start in the middle
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        self.position = 2
+        return self.position, {}
+
+    def step(self, action: int) -> tuple[int, float, bool, bool, dict[str, Any]]:
+        if action == 0:
+            self.position = max(0, self.position - 1)
+        elif action == 1:
+            self.position = min(4, self.position + 1)
+        else:
+            raise RuntimeError(f"{action} is not a valid action (needs to be 0 or 1)")
+
+        reward = 0.0
+        if self.position == 4:
+            reward = 1.0
+
+        terminated = self.position == 0 or self.position == 4
+        truncated = False
+
+        return self.position, reward, terminated, truncated, {}
+
+    def render(self, mode: str = "human"):
+        print(f"[RandomWalk] pos={self.position}")

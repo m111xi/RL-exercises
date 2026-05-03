@@ -1,0 +1,11 @@
+# @package _global_
+agent: td_lambda
+agent_name: td_lambda
+agent_class: TDLambdaAgent
+algorithm: sarsa
+lambda_: 0.9
+epsilon: 0.1
+alpha: 0.5
+gamma: 1.0
+batch_size: 0
+training_steps: 15000
