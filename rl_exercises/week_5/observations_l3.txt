@@ -1,0 +1,39 @@
+# Level 3: DDPG Observations
+DQN works only for discrete tasks. DDPG works for continuous tasks, using a actor/critic principle. 
+DDPG used insights from DQN to improve the DPG Algorithm.
+
+Concretely, the algorithmic changes relative to original DPG are:
+
+replay buffer for off-policy minibatch updates from less correlated samples,
+target networks for both Q and μ
+soft target updates instead of hard copies,
+batch normalization across state inputs and much of both networks,
+practical exploration noise added to the deterministic actor, using an Ornstein-Uhlenbeck process in physical tasks
+
+## Task: Implement DDPG and compare to REINFORCE
+DDPG Agent is implement in the rl_exercises.week_5.ddpg.py. The code implementation was done with the help of AI via Tab Completion.
+The actor returns an action (continuous) and the critic tries to approximate the Q-Value. 
+Additionally there is a replay buffer and noise (gaussian) added aswell.
+
+Because DDPG works with continuous actions, we had to implement a Gaussian REINFORCE Agent to make his actions continuous aswell.
+Otherwise a comparison would not be possible. This code was done with the help of AI (prompting with the old REINFORCE code)
+
+In examples/compare_reinforce_ddpg.py we implemented a comparison using the Pendulum-v1 Env with 200 Episodes.
+Both Agents had a hidden_size of 128.
+The DDPG Agent won the comparison: 
+
+Final 3 Evaluation Rewards:
+  REINFORCE: [-1285.759875323027, -1146.086210754985, -1361.5804455185719]
+  DDPG:      [-166.62134378055563, -120.72635128081966, -234.10478229008504]
+
+Mean eval (last 3 evals):
+  REINFORCE: -1264.48
+  DDPG:      -173.82
+
+But the DDPG Agent took also longer as well. Atleast 3 times more, than the REINFORCE Agent.
+This is probably because of training two networks: the actor and the critic. 
+Another important fact might be the use of the replay buffer. This makes it more efficient with fewer samples,
+but therefore a longer training time is needed. 
+
+The resulting plots can be seen in outputs/compare_reinforce_ddpg
+

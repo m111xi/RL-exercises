@@ -86,7 +86,43 @@ class Policy(nn.Module):
         # TODO: Apply fc1 followed by ReLU (Flatten input if needed)
         # TODO: Apply fc2 to get logits
         # TODO: Return softmax over logits along the last dimension
-        pass
+        x = self.fc1(x)
+        x = torch.relu(x)
+        x = self.fc2(x)
+        return torch.softmax(x, dim=-1)
+
+
+class GaussianPolicy(nn.Module):
+    """
+    Gaussian policy network for continuous action spaces.
+
+    The network outputs a mean vector and learns a state-independent log standard deviation.
+    """
+
+    def __init__(
+        self,
+        state_space: gym.spaces.Box,
+        action_space: gym.spaces.Box,
+        hidden_size: int = 128,
+        log_std_init: float = -0.5,
+    ):
+        super().__init__()
+        self.state_dim = int(np.prod(state_space.shape))
+        self.action_dim = int(np.prod(action_space.shape))
+        self.fc1 = nn.Linear(self.state_dim, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.mean_layer = nn.Linear(hidden_size, self.action_dim)
+        self.log_std = nn.Parameter(torch.ones(self.action_dim) * log_std_init)
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+        x = x.reshape(x.shape[0], -1)
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        mean = self.mean_layer(x)
+        std = torch.exp(self.log_std)
+        return mean, std
 
 
 class REINFORCEAgent(AbstractAgent):
@@ -160,7 +196,14 @@ class REINFORCEAgent(AbstractAgent):
         # TODO: Pass state through the policy network to get action probabilities
         # If evaluate is True, return the action with highest probability
         # Otherwise, sample from the action distribution and return the log-probability as a key in the dictionary (Hint: use torch.distributions.Categorical)
-        return 0, {}  # Placeholder return value
+        action_probs = self.policy(torch.tensor(state, dtype=torch.float32))
+        dist = torch.distributions.Categorical(action_probs)
+        if evaluate:
+            action = torch.argmax(action_probs)
+            return int(action), {}
+        else:
+            action = dist.sample()
+            return int(action), {"log_prob": dist.log_prob(action)}
 
     def compute_returns(self, rewards: List[float]) -> torch.Tensor:
         """
@@ -181,7 +224,12 @@ class REINFORCEAgent(AbstractAgent):
         #       - Update R = r + gamma * R
         #       - Insert R at the beginning of the returns list
         # TODO: Convert the list of returns to a torch.Tensor and return
-        pass
+        R = 0.0
+        returns = []
+        for r in reversed(rewards):
+            R = r + self.gamma * R
+            returns.insert(0, R)
+        return torch.tensor(returns, dtype=torch.float32)
 
     def update_agent(
         self,
@@ -213,6 +261,7 @@ class REINFORCEAgent(AbstractAgent):
         # TODO: Normalize advantages with mean and standard deviation,
         # and add 1e-8 to the denominator to avoid division by zero
         advantages = returns_t
+        advantages = (advantages - advantages.mean()) / (advantages.std(unbiased=False) + 1e-8)
 
         lp_tensor = torch.stack(log_probs)
         loss = -torch.sum(lp_tensor * advantages)
@@ -253,6 +302,7 @@ class REINFORCEAgent(AbstractAgent):
         self.policy.load_state_dict(ckpt["policy"])
         self.optimizer.load_state_dict(ckpt["optimizer"])
 
+
     def evaluate(
         self, eval_env: gym.Env, num_episodes: int = 10
     ) -> Tuple[float, float]:
@@ -276,7 +326,17 @@ class REINFORCEAgent(AbstractAgent):
         self.policy.eval()
         returns: List[float] = []
         # TODO: rollout num_episodes in eval_env and aggregate undiscounted returns across episodes
-
+        for _ in range(num_episodes):
+            state, _ = eval_env.reset()
+            done = False
+            ep_return = 0.0
+            while not done:
+                action, _ = self.predict_action(state, evaluate=True)
+                next_state, reward, term, trunc, _ = eval_env.step(action)
+                done = term or trunc
+                ep_return += reward
+                state = next_state
+            returns.append(ep_return)
         self.policy.train()  # Set back to training mode
 
         # TODO: Return the mean and std of the returns across episodes
@@ -325,6 +385,52 @@ class REINFORCEAgent(AbstractAgent):
                 print(f"[Eval ] Ep {ep:3d} AvgReturn {mean_ret:5.1f} ± {std_ret:4.1f}")
 
         print("Training complete.")
+
+
+class REINFORCEGaussianAgent(REINFORCEAgent):
+    """REINFORCE agent using a Gaussian policy for continuous actions."""
+
+    def __init__(
+        self,
+        env: gym.Env,
+        lr: float = 1e-3,
+        gamma: float = 0.99,
+        seed: int = 0,
+        hidden_size: int = 128,
+        log_std_init: float = -0.5,
+    ) -> None:
+        set_seed(env, seed)
+        self.env = env
+        self.gamma = gamma
+        self.policy = GaussianPolicy(
+            env.observation_space,
+            env.action_space,
+            hidden_size=hidden_size,
+            log_std_init=log_std_init,
+        )
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
+        self.total_episodes = 0
+
+    def predict_action(
+        self, state: np.ndarray, info: Dict[str, Any] = {}, evaluate: bool = False
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        state_t = torch.tensor(state, dtype=torch.float32)
+        mean, std = self.policy(state_t)
+        dist = torch.distributions.Normal(mean, std)
+
+        if evaluate:
+            action = mean
+        else:
+            action = dist.rsample()
+            log_prob = dist.log_prob(action).sum(-1)
+
+        action = action.squeeze(0)
+        action_np = action.detach().cpu().numpy()
+        action_np = np.clip(action_np, self.env.action_space.low, self.env.action_space.high)
+
+        if evaluate:
+            return action_np, {}
+        return action_np, {"log_prob": log_prob}
 
 
 @hydra.main(
