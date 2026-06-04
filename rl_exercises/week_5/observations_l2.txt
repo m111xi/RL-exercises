@@ -1,0 +1,14 @@
+# Level 2: Emipirical Policy Gradient
+
+### Observations 1:
+Short trajectories (50 steps) produced low and noisy eval rewards around 35–50. The 100-step runs were the most stable and reached 100 reward consistently by 100 episodes. Longer trajectories (200 and 500) still learn, but training became less predictable and more seed-dependent.
+
+
+### Setup for LunarLander:
+- CartPole-v1 baseline: hidden_size=128, lr=1e-2
+- Tried LunarLander-v3 with the same hyperparameters
+
+### Observations:
+The same CartPole hyperparameters did not work for LunarLander-v3. Evaluation rewards stayed strongly negative and did not improve, so this task needs a different learning rate or architecture. REINFORCE is much more sensitive in this environment, and the same network/learning rate is not sufficient for convergence.
+
+Skipped the comparison
