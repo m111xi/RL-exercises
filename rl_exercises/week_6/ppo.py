@@ -11,7 +11,8 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.distributions import Categorical
-
+from torch import nn
+import torch.nn.functional as F
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
 
@@ -55,6 +56,8 @@ class PPOAgent(AbstractAgent):
         vf_coef: float = 0.5,
         seed: int = 0,
         hidden_size: int = 128,
+        use_value_clip: bool = False,
+        use_lr_annealing: bool = False,
     ) -> None:
         set_seed(env, seed)
         self.seed = seed
@@ -66,6 +69,11 @@ class PPOAgent(AbstractAgent):
         self.batch_size = batch_size
         self.ent_coef = ent_coef
         self.vf_coef = vf_coef
+        self.use_value_clip = use_value_clip
+        self.use_lr_annealing = use_lr_annealing
+        self.initial_lrs = [lr_actor, lr_critic]
+        self.current_step = 0
+        self.total_steps = 0
 
         # networks
         self.policy = Policy(env.observation_space, env.action_space, hidden_size)
@@ -100,8 +108,26 @@ class PPOAgent(AbstractAgent):
         next_values: torch.Tensor,  # noqa: F841
         dones: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        # TODO: compute advantages using GAE (Hint: replicate the GAE formula from actor critic)
-        return None  # template placeholder
+        # TODO: compute deltas: one-step TD errors
+        deltas = []
+        for r, v, nv, d in zip(rewards, values, next_values, dones):
+            delta = r + self.gamma * nv * (1 - d) - v
+            deltas.append(delta)
+        deltas = torch.tensor(deltas, dtype=torch.float32)
+        # TODO: accumulate GAE advantages backwards
+        advantages = []
+        advantage = 0.0
+        for delta, d in zip(reversed(deltas), reversed(dones)):
+            advantage = delta + self.gamma * self.gae_lambda * advantage * (1 - d)
+            advantages.insert(0, advantage)
+        advantages = torch.tensor(advantages, dtype=torch.float32)
+        # TODO: compute returns using advantages and values
+        returns = advantages + values
+        # TODO: normalize advantages to zero mean and unit variance and use 1e-8 for numerical stability
+        advantages = (advantages - advantages.mean()) / (advantages.std(unbiased=False) + 1e-8)
+
+        return advantages.detach(), returns.detach()
+
 
     def update(self, trajectory: List[Any]) -> None:
         # unpack trajectory
@@ -113,48 +139,57 @@ class PPOAgent(AbstractAgent):
         dones = torch.tensor([t[5] for t in trajectory], dtype=torch.float32)
 
         # TODO: compute values and next_values without gradients
-        values = ...  # noqa: F841  # template placeholder
-        next_values = ...  # noqa: F841  # template placeholder
-
-        # TODO: compute advantages and returns
-        advantages = ...  # template placeholder
-        returns = ...  # template placeholder
+        values = self.value_fn(states).detach()
+        next_values = torch.cat((values[1:], torch.tensor([0.0])))  # bootstrap with 0 for terminal state
 
         advantages, returns = self.compute_gae(rewards, values, next_values, dones)
 
+        old_values = self.value_fn(states).detach().squeeze(-1)
         dataset = torch.utils.data.TensorDataset(
-            states, actions, old_logps, advantages, returns
+            states, actions, old_logps, advantages, returns, old_values
         )
         loader = torch.utils.data.DataLoader(
             dataset, batch_size=self.batch_size, shuffle=True
         )
 
         for _ in range(self.epochs):
-            for b_states, b_actions, b_oldlogp, b_adv, b_ret in loader:
-                # TODO: compute policy loss, value loss, and entropy loss
+            for b_states, b_actions, b_oldlogp, b_adv, b_ret, b_old_values in loader:
+                probs = self.policy(b_states)
+                dist = Categorical(probs)
+                new_logp = dist.log_prob(b_actions)
 
-                # TODO: compute new log probabilities by sampling actions from the policy distribution
-                new_logp = ...  # noqa: F841  # template placeholder
+                ratio = torch.exp(new_logp - b_oldlogp)
+                policy_loss = -torch.min(
+                    ratio * b_adv,
+                    torch.clamp(ratio, 1 - self.clip_eps, 1 + self.clip_eps) * b_adv,
+                ).mean()
 
-                # TODO: compute the ratio of new log probabilities to old log probabilities
+                values = self.value_fn(b_states).squeeze(-1)
+                if self.use_value_clip:
+                    value_pred_clipped = b_old_values + torch.clamp(
+                        values - b_old_values,
+                        -self.clip_eps,
+                        self.clip_eps,
+                    )
+                    value_loss = 0.5 * (
+                        F.mse_loss(values, b_ret)
+                        + F.mse_loss(value_pred_clipped, b_ret)
+                    )
+                else:
+                    value_loss = F.mse_loss(values, b_ret)
 
-                # TODO: compute the clipped surrogate loss using the clipped objective
-                policy_loss = ...  # template placeholder
+                entropy_loss = dist.entropy().mean()
 
-                # TODO: compute value loss using mean squared error
-                value_loss = ...  # template placeholder
+                loss = policy_loss + self.vf_coef * value_loss - self.ent_coef * entropy_loss
 
-                # TODO: compute entropy loss using the distribution's entropy
-                entropy_loss = ...  # template placeholder
-
-                loss = (
-                    policy_loss
-                    + self.vf_coef * value_loss
-                    + self.ent_coef * entropy_loss
-                )
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+
+                if self.use_lr_annealing and self.total_steps > 0:
+                    frac = max(0.0, 1.0 - self.current_step / self.total_steps)
+                    for param_group, base_lr in zip(self.optimizer.param_groups, self.initial_lrs):
+                        param_group["lr"] = base_lr * frac
 
         return policy_loss.item(), value_loss.item(), entropy_loss.item()
 
@@ -164,6 +199,7 @@ class PPOAgent(AbstractAgent):
         eval_interval: int = 10000,
         eval_episodes: int = 5,
     ) -> None:
+        self.total_steps = total_steps
         eval_env = gym.make(self.env.spec.id)
         step_count = 0
         while step_count < total_steps:
@@ -180,6 +216,7 @@ class PPOAgent(AbstractAgent):
                 )
                 state = next_state
                 step_count += 1
+                self.current_step = step_count
 
                 if step_count % eval_interval == 0:
                     mean_r, std_r = self.evaluate(eval_env, num_episodes=eval_episodes)

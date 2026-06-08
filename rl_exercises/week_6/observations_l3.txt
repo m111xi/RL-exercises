@@ -1,0 +1,7 @@
+Plot: rl_exercises\examples\sac_ppo_enhanced_results\sac_ppo_enhanced_comparison_iqm.png
+
+SAC clearly does better than PPO Enhanced on LunarLander-v3. Looking at the plot, PPO gets stuck around -200 and never really improves beyond that. SAC starts worse but after about 10k steps it pulls ahead and ends up with positive returns around +100 to +200.
+
+About the SAC paper claims: I can confirm that SAC is more sample efficient than PPO here, it reaches higher returns in fewer steps. The stability claim also holds, the shaded bands are narrow and the curve doesn't jump around like crazy. The entropy maximization really seems to help with exploration because SAC finds a good policy while PPO stays in a bad local minimum.
+
+What I can't confirm from this plot is whether SAC is always more robust across random seeds or beats DDPG, since I didn't test that. Also the paper focuses on continuous control but LunarLander is discrete with a small action space, so it's not a perfect match. Still, the main points about efficiency and stability hold up in this environment.
