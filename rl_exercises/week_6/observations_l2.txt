@@ -1,0 +1,15 @@
+Plot is in rl_exercises\examples\ppo_comparison_results\ppo_actor_critic_comparison_iqm.png 
+1. Performance Comparison:
+   - Actor-Critic (baseline): Stagnates around -680 after 7500 steps, no further improvement.
+   - Vanilla PPO: Converges to -200, stable but suboptimal.
+   - PPO Enhanced (LR annealing + KL early stopping): Rapid improvement, reaches -200 by 7500 steps and maintains with lower variance than vanilla PPO.
+
+2. Enhancement Justifications (implemented):
+   - Learning-rate annealing: Gradually decays LR over training steps. Helps fine-tune policy late in training, avoiding overshooting. Observed smoother convergence and reduced final return variance.
+   - KL early stopping: Monitors KL divergence between old/new policies; stops gradient updates if KL exceeds threshold. Prevents destructive policy updates, improving stability. Visible in enhanced PPO's consistent -200 plateau vs. Actor-Critic's collapse.
+
+3. Key Insight:
+   Vanilla PPO already outperforms Actor-Critic, but enhancements yield faster convergence and more stable returns. The combination of adaptive LR and KL clipping addresses both exploration-exploitation trade-off and update safety.
+
+4. RLiable Uncertainty:
+   Shaded regions show enhanced PPO has tighter confidence intervals than vanilla PPO, confirming reduced run-to-run variance due to enhancements.

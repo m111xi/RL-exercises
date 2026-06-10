@@ -1,0 +1,9 @@
+OBSERVATIONS:
+Plot is in rl_excercises.examples.actor_critic_baselines_results
+All baseline variants improve their performance during training, reaching substantially higher returns than at the beginning.
+
+The avg baseline achieves the highest final return and shows the most consistent improvement. The value baseline performs similarly and remains competitive throughout training. The none baseline also learns successfully but exhibits larger fluctuations, which is expected due to higher gradient variance.
+
+The gae baseline performs worst in this experiment and shows the largest instability. While GAE is designed to provide a favorable bias–variance trade-off, its effectiveness depends on accurate value estimates and suitable hyperparameters.
+
+Overall, the results suggest that simple variance-reduction techniques (avg and value) lead to faster and more stable learning on LunarLander-v3.
