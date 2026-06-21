@@ -7,14 +7,14 @@ and saves training/evaluation rewards to CSV for direct comparison.
 
 from __future__ import annotations
 
+from typing import List
+
 from pathlib import Path
-from typing import List, Tuple
 
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from rl_exercises.week_5.ddpg import DDPGAgent
 from rl_exercises.week_5.policy_gradient import REINFORCEGaussianAgent, set_seed
 
@@ -36,7 +36,9 @@ def train_reinforce_episode(agent: REINFORCEGaussianAgent, env: gym.Env) -> floa
     return ep_reward
 
 
-def evaluate_reinforce(agent: REINFORCEGaussianAgent, env: gym.Env, n_eval: int = 3) -> float:
+def evaluate_reinforce(
+    agent: REINFORCEGaussianAgent, env: gym.Env, n_eval: int = 3
+) -> float:
     vals = []
     for _ in range(n_eval):
         state, _ = env.reset()
@@ -93,12 +95,16 @@ def main() -> None:
     output_dir = Path("outputs") / "comparison_reinforce_ddpg"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Comparing REINFORCE (Gaussian) vs DDPG on {env_name} for {episodes} episodes\n")
+    print(
+        f"Comparing REINFORCE (Gaussian) vs DDPG on {env_name} for {episodes} episodes\n"
+    )
 
     # REINFORCE (Gaussian)
     env_r = gym.make(env_name)
     set_seed(env_r, seed)
-    reinforce_agent = REINFORCEGaussianAgent(env_r, lr=1e-3, gamma=0.99, seed=seed, hidden_size=128)
+    reinforce_agent = REINFORCEGaussianAgent(
+        env_r, lr=1e-3, gamma=0.99, seed=seed, hidden_size=128
+    )
 
     reinforce_train: List[float] = []
     reinforce_eval: List[float] = []
@@ -117,7 +123,15 @@ def main() -> None:
     # DDPG
     env_d = gym.make(env_name)
     set_seed(env_d, seed)
-    ddpg_agent = DDPGAgent(env_d, lr_actor=1e-3, lr_critic=1e-3, gamma=0.99, tau=0.005, hidden_size=128, seed=seed)
+    ddpg_agent = DDPGAgent(
+        env_d,
+        lr_actor=1e-3,
+        lr_critic=1e-3,
+        gamma=0.99,
+        tau=0.005,
+        hidden_size=128,
+        seed=seed,
+    )
 
     ddpg_train: List[float] = []
     ddpg_eval: List[float] = []
@@ -134,29 +148,42 @@ def main() -> None:
     env_d.close()
 
     # Save results
-    comparison_df = pd.DataFrame({
-        "episode": reinforce_eval_episodes,
-        "reinforce_eval": reinforce_eval,
-        "ddpg_eval": ddpg_eval,
-    })
+    comparison_df = pd.DataFrame(
+        {
+            "episode": reinforce_eval_episodes,
+            "reinforce_eval": reinforce_eval,
+            "ddpg_eval": ddpg_eval,
+        }
+    )
     comparison_df.to_csv(output_dir / "comparison.csv", index=False)
 
-    reinforce_df = pd.DataFrame({
-        "episode": list(range(1, len(reinforce_train) + 1)),
-        "train_reward": reinforce_train,
-    })
+    reinforce_df = pd.DataFrame(
+        {
+            "episode": list(range(1, len(reinforce_train) + 1)),
+            "train_reward": reinforce_train,
+        }
+    )
     reinforce_df.to_csv(output_dir / "reinforce_train.csv", index=False)
 
-    ddpg_df = pd.DataFrame({
-        "episode": list(range(1, len(ddpg_train) + 1)),
-        "train_reward": ddpg_train,
-    })
+    ddpg_df = pd.DataFrame(
+        {
+            "episode": list(range(1, len(ddpg_train) + 1)),
+            "train_reward": ddpg_train,
+        }
+    )
     ddpg_df.to_csv(output_dir / "ddpg_train.csv", index=False)
 
     # Save plots
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(reinforce_df["episode"], reinforce_df["train_reward"], label="REINFORCE Gaussian", color="tab:blue")
-    ax.plot(ddpg_df["episode"], ddpg_df["train_reward"], label="DDPG", color="tab:orange")
+    ax.plot(
+        reinforce_df["episode"],
+        reinforce_df["train_reward"],
+        label="REINFORCE Gaussian",
+        color="tab:blue",
+    )
+    ax.plot(
+        ddpg_df["episode"], ddpg_df["train_reward"], label="DDPG", color="tab:orange"
+    )
     ax.set_title("Training Rewards: REINFORCE Gaussian vs DDPG")
     ax.set_xlabel("Episode")
     ax.set_ylabel("Episode Reward")
@@ -167,7 +194,13 @@ def main() -> None:
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(reinforce_eval_episodes, reinforce_eval, label="REINFORCE Gaussian", marker="o", color="tab:blue")
+    ax.plot(
+        reinforce_eval_episodes,
+        reinforce_eval,
+        label="REINFORCE Gaussian",
+        marker="o",
+        color="tab:blue",
+    )
     ax.plot(ddpg_eval_episodes, ddpg_eval, label="DDPG", marker="o", color="tab:orange")
     ax.set_title("Evaluation Rewards: REINFORCE Gaussian vs DDPG")
     ax.set_xlabel("Episode")
@@ -189,15 +222,15 @@ def main() -> None:
     print(f"  REINFORCE: {reinforce_eval[-3:]}")
     print(f"  DDPG:      {ddpg_eval[-3:]}")
     print()
-    print(f"Mean eval (last 3 evals):")
+    print("Mean eval (last 3 evals):")
     print(f"  REINFORCE: {np.mean(reinforce_eval[-3:]):.2f}")
     print(f"  DDPG:      {np.mean(ddpg_eval[-3:]):.2f}")
     print()
     print(f"Results saved to: {output_dir}")
-    print(f"  - comparison.csv (side-by-side eval comparison)")
-    print(f"  - reinforce_train.csv, ddpg_train.csv (training curves)")
-    print(f"  - training_curve.png")
-    print(f"  - evaluation_curve.png")
+    print("  - comparison.csv (side-by-side eval comparison)")
+    print("  - reinforce_train.csv, ddpg_train.csv (training curves)")
+    print("  - training_curve.png")
+    print("  - evaluation_curve.png")
 
 
 if __name__ == "__main__":

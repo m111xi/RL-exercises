@@ -9,10 +9,10 @@ from typing import Any, List, Tuple
 import gymnasium as gym
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
-from torch import nn
-import torch.nn.functional as F
+
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
 
@@ -124,10 +124,11 @@ class PPOAgent(AbstractAgent):
         # TODO: compute returns using advantages and values
         returns = advantages + values
         # TODO: normalize advantages to zero mean and unit variance and use 1e-8 for numerical stability
-        advantages = (advantages - advantages.mean()) / (advantages.std(unbiased=False) + 1e-8)
+        advantages = (advantages - advantages.mean()) / (
+            advantages.std(unbiased=False) + 1e-8
+        )
 
         return advantages.detach(), returns.detach()
-
 
     def update(self, trajectory: List[Any]) -> None:
         # unpack trajectory
@@ -140,7 +141,9 @@ class PPOAgent(AbstractAgent):
 
         # TODO: compute values and next_values without gradients
         values = self.value_fn(states).detach()
-        next_values = torch.cat((values[1:], torch.tensor([0.0])))  # bootstrap with 0 for terminal state
+        next_values = torch.cat(
+            (values[1:], torch.tensor([0.0]))
+        )  # bootstrap with 0 for terminal state
 
         advantages, returns = self.compute_gae(rewards, values, next_values, dones)
 
@@ -180,7 +183,11 @@ class PPOAgent(AbstractAgent):
 
                 entropy_loss = dist.entropy().mean()
 
-                loss = policy_loss + self.vf_coef * value_loss - self.ent_coef * entropy_loss
+                loss = (
+                    policy_loss
+                    + self.vf_coef * value_loss
+                    - self.ent_coef * entropy_loss
+                )
 
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -188,7 +195,9 @@ class PPOAgent(AbstractAgent):
 
                 if self.use_lr_annealing and self.total_steps > 0:
                     frac = max(0.0, 1.0 - self.current_step / self.total_steps)
-                    for param_group, base_lr in zip(self.optimizer.param_groups, self.initial_lrs):
+                    for param_group, base_lr in zip(
+                        self.optimizer.param_groups, self.initial_lrs
+                    ):
                         param_group["lr"] = base_lr * frac
 
         return policy_loss.item(), value_loss.item(), entropy_loss.item()

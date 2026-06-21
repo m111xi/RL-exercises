@@ -7,13 +7,13 @@ Level 3 observations file.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Dict, List
+
+from pathlib import Path
 
 import gymnasium as gym
 import numpy as np
 import pandas as pd
-
 from rl_exercises.week_5.ddpg import DDPGAgent
 from rl_exercises.week_5.policy_gradient import set_seed
 
@@ -76,14 +76,16 @@ def run_ddpg(env_name: str, episodes: int, output_dir: Path) -> Dict[str, List[f
             evals = [evaluate_episode(agent, env) for _ in range(3)]
             eval_rewards.append(float(np.mean(evals)))
             eval_episodes_list.append(episode)
-            print(f"Episode {episode:3d} | Train {ep_reward:7.2f} | Eval {np.mean(evals):7.2f}")
+            print(
+                f"Episode {episode:3d} | Train {ep_reward:7.2f} | Eval {np.mean(evals):7.2f}"
+            )
 
     env.close()
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame({"episode": list(range(1, len(train_rewards) + 1)), "reward": train_rewards}).to_csv(
-        output_dir / "train_rewards.csv", index=False
-    )
+    pd.DataFrame(
+        {"episode": list(range(1, len(train_rewards) + 1)), "reward": train_rewards}
+    ).to_csv(output_dir / "train_rewards.csv", index=False)
     pd.DataFrame({"episode": eval_episodes_list, "reward": eval_rewards}).to_csv(
         output_dir / "eval_rewards.csv", index=False
     )
@@ -103,8 +105,12 @@ def main() -> None:
     obs_file = Path("rl_exercises") / "week_5" / "observations_l3.txt"
     with obs_file.open("a", encoding="utf-8") as fh:
         fh.write("\n---\n")
-        fh.write(f"DDPG run: {env_name}, episodes={episodes}, lr_actor=1e-3, lr_critic=1e-3, hidden_size=256\n")
-        fh.write(f"Final evaluation rewards: {summary['eval'][-3:] if summary['eval'] else []}\n")
+        fh.write(
+            f"DDPG run: {env_name}, episodes={episodes}, lr_actor=1e-3, lr_critic=1e-3, hidden_size=256\n"
+        )
+        fh.write(
+            f"Final evaluation rewards: {summary['eval'][-3:] if summary['eval'] else []}\n"
+        )
         fh.write(f"Results saved under: {base_output.resolve()}\n")
 
     print("Done. Results saved to", base_output.resolve())

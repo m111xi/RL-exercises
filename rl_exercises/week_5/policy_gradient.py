@@ -261,7 +261,9 @@ class REINFORCEAgent(AbstractAgent):
         # TODO: Normalize advantages with mean and standard deviation,
         # and add 1e-8 to the denominator to avoid division by zero
         advantages = returns_t
-        advantages = (advantages - advantages.mean()) / (advantages.std(unbiased=False) + 1e-8)
+        advantages = (advantages - advantages.mean()) / (
+            advantages.std(unbiased=False) + 1e-8
+        )
 
         lp_tensor = torch.stack(log_probs)
         loss = -torch.sum(lp_tensor * advantages)
@@ -301,7 +303,6 @@ class REINFORCEAgent(AbstractAgent):
         ckpt = torch.load(path)
         self.policy.load_state_dict(ckpt["policy"])
         self.optimizer.load_state_dict(ckpt["optimizer"])
-
 
     def evaluate(
         self, eval_env: gym.Env, num_episodes: int = 10
@@ -426,7 +427,9 @@ class REINFORCEGaussianAgent(REINFORCEAgent):
 
         action = action.squeeze(0)
         action_np = action.detach().cpu().numpy()
-        action_np = np.clip(action_np, self.env.action_space.low, self.env.action_space.high)
+        action_np = np.clip(
+            action_np, self.env.action_space.low, self.env.action_space.high
+        )
 
         if evaluate:
             return action_np, {}

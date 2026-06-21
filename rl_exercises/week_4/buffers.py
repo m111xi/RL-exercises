@@ -67,12 +67,6 @@ class ReplayBuffer(AbstractBuffer):
             self.infos.pop(0)
 
         # TODO: append state, action, reward, next_state, done, info to their respective lists
-        self.states.append(state)
-        self.actions.append(action)
-        self.rewards.append(reward)
-        self.next_states.append(next_state)
-        self.dones.append(done)
-        self.infos.append(info)
 
     def sample(
         self, batch_size: int = 32
