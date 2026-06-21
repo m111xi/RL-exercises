@@ -1,0 +1,22 @@
+To run the Software: python -m rl_exercises.week_8.level_1_seeding
+
+I used Q-learning on the MarsRover environment. The environment is cheap to run and tabular, which makes it suitable for evaluating many random seeds. I trained the agent for 20 seeds and compared low, medium and large seed counts: N = 3, N = 10 and N = 20.
+
+At the final checkpoint, the results were:
+
+N = 3:
+mean = 54.887, median = 60.680, IQM = 54.887, std = 11.592, SE = 6.693, 95% CI = [41.540, 62.440]
+N = 10:
+mean = 44.598, median = 51.110, IQM = 48.360, std = 21.961, SE = 6.945, 95% CI = [28.850, 62.180]
+N = 20:
+mean = 46.333, median = 60.600, IQM = 54.864, std = 22.831, SE = 5.105, 95% CI = [38.222, 61.872]
+
+The different 3-seed sets gave very different final IQMs:
+* seeds [0, 1, 2]: IQM = 54.887
+* seeds [7, 8, 9]: IQM = 25.047
+* seeds [14, 15, 16]: IQM = 42.833
+
+This shows that low seed evaluation can be very misleading. Depending only on the selected three seeds, the same algorithm can look strong, weak, or somewhere in between. Therefore, small seed counts are useful for debugging, but not reliable for judging final performance.
+The number of seeds also affects the uncertainty estimates. The standard deviation remains high even with 20 seeds, meaning that individual runs still differ a lot. However, the standard error becomes smaller with more seeds, so the aggregate estimate becomes more stable.
+The metrics also tell different stories. For N = 20, the mean is much lower than the median and IQM. This suggests that some poor performing seeds pull the mean down. The median shows that a typical run performs well, while the IQM gives a more robust summary of the central performance distribution.
+Overall, I would report the N = 20 IQM together with its confidence interval as the main result. The disparate 3-seed sets are the strongest evidence that using too few seeds can change the interpretation substantially.
