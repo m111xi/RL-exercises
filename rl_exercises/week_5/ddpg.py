@@ -13,7 +13,9 @@ from rl_exercises.week_5.policy_gradient import set_seed
 
 
 class ActorNetwork(nn.Module):
-    def __init__(self, observation_dim: int, action_dim: int, hidden_size: int = 256) -> None:
+    def __init__(
+        self, observation_dim: int, action_dim: int, hidden_size: int = 256
+    ) -> None:
         super().__init__()
         self.fc1 = nn.Linear(observation_dim, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
@@ -26,7 +28,9 @@ class ActorNetwork(nn.Module):
 
 
 class CriticNetwork(nn.Module):
-    def __init__(self, observation_dim: int, action_dim: int, hidden_size: int = 256) -> None:
+    def __init__(
+        self, observation_dim: int, action_dim: int, hidden_size: int = 256
+    ) -> None:
         super().__init__()
         self.fc1 = nn.Linear(observation_dim + action_dim, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
@@ -87,7 +91,9 @@ class DDPGAgent(AbstractAgent):
 
     def _scale_action(self, action: torch.Tensor) -> np.ndarray:
         action = action.cpu().numpy()
-        scaled = self.action_low + (action + 1.0) * 0.5 * (self.action_high - self.action_low)
+        scaled = self.action_low + (action + 1.0) * 0.5 * (
+            self.action_high - self.action_low
+        )
         return np.clip(scaled, self.action_low, self.action_high)
 
     def _to_tensor(self, array: np.ndarray) -> torch.Tensor:
@@ -102,7 +108,9 @@ class DDPGAgent(AbstractAgent):
         action = action.squeeze(0)
         if not evaluate:
             noise = np.random.normal(scale=self.noise_std, size=action.shape)
-            action = torch.clamp(action + torch.tensor(noise, dtype=torch.float32), -1.0, 1.0)
+            action = torch.clamp(
+                action + torch.tensor(noise, dtype=torch.float32), -1.0, 1.0
+            )
         return self._scale_action(action), {}
 
     def store_transition(
@@ -118,7 +126,9 @@ class DDPGAgent(AbstractAgent):
 
     def update_agent(
         self,
-        training_batch: Optional[List[Tuple[Any, Any, float, Any, bool, Dict[str, Any]]]] = None,
+        training_batch: Optional[
+            List[Tuple[Any, Any, float, Any, bool, Dict[str, Any]]]
+        ] = None,
     ) -> float:
         if training_batch is None:
             if len(self.replay_buffer) < self.batch_size:
@@ -158,7 +168,9 @@ class DDPGAgent(AbstractAgent):
 
     def _soft_update(self, source: nn.Module, target: nn.Module) -> None:
         for param, target_param in zip(source.parameters(), target.parameters()):
-            target_param.data.copy_(self.tau * param.data + (1.0 - self.tau) * target_param.data)
+            target_param.data.copy_(
+                self.tau * param.data + (1.0 - self.tau) * target_param.data
+            )
 
     def save(self, path: str) -> None:
         torch.save(

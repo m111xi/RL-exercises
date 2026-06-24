@@ -7,13 +7,13 @@ on:
   # When a push occurs on either of these branches
   push:
     branches:
-      - main
+      #- main
       - development
 
   # When a push occurs on a PR that targets these branches
   pull_request:
     branches:
-      - main
+      #- main
       - development
 
 env:

@@ -13,19 +13,19 @@ Optional arguments are available for environment, number of seeds, and training 
 
 from __future__ import annotations
 
+from typing import Any
+
 import argparse
 from pathlib import Path
-from typing import Any
 
 import gymnasium as gym
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from rl_exercises.week_6.actor_critic import ActorCriticAgent, set_seed
 from rliable import metrics
 from rliable.library import get_interval_estimates
 from rliable.plot_utils import plot_sample_efficiency_curve
-
-from rl_exercises.week_6.actor_critic import ActorCriticAgent, set_seed
 
 
 def train_and_log(
@@ -99,7 +99,9 @@ def train_and_log(
     return output_file
 
 
-def aggregate_results(result_dir: Path, baselines: list[str], seeds: list[int], env_name: str) -> None:
+def aggregate_results(
+    result_dir: Path, baselines: list[str], seeds: list[int], env_name: str
+) -> None:
     eval_scores: dict[str, np.ndarray] = {}
     eval_steps: np.ndarray | None = None
 
@@ -157,9 +159,15 @@ def parse_args() -> argparse.Namespace:
         default=[0, 1, 2, 3, 4],
         help="Random seeds to run",
     )
-    parser.add_argument("--steps", type=int, default=200000, help="Total training steps")
-    parser.add_argument("--eval-interval", type=int, default=10000, help="Evaluation interval")
-    parser.add_argument("--eval-episodes", type=int, default=5, help="Evaluation episodes")
+    parser.add_argument(
+        "--steps", type=int, default=200000, help="Total training steps"
+    )
+    parser.add_argument(
+        "--eval-interval", type=int, default=10000, help="Evaluation interval"
+    )
+    parser.add_argument(
+        "--eval-episodes", type=int, default=5, help="Evaluation episodes"
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -178,9 +186,7 @@ def main() -> None:
         baseline_dir = args.output_dir / baseline
         baseline_dir.mkdir(parents=True, exist_ok=True)
         for seed in args.seeds:
-            print(
-                f"Training env={args.env} baseline={baseline} seed={seed}"
-            )
+            print(f"Training env={args.env} baseline={baseline} seed={seed}")
             train_and_log(
                 env_name=args.env,
                 baseline_type=baseline,

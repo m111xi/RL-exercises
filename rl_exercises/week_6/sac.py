@@ -6,8 +6,9 @@ This version uses a soft actor-critic update rule adapted for discrete actions.
 
 from __future__ import annotations
 
+from typing import Any, Tuple
+
 import copy
-from typing import Any, List, Tuple
 
 import gymnasium as gym
 import numpy as np
@@ -15,10 +16,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.distributions import Categorical
-
 from rl_exercises.agent import AbstractAgent
 from rl_exercises.week_6.networks import Policy
+from torch.distributions import Categorical
 
 
 class ReplayBuffer:
@@ -196,7 +196,9 @@ class SACAgent(AbstractAgent):
         probs = self.policy(states)
         log_probs = torch.log(probs + 1e-8)
         min_q = torch.min(self.q1(states), self.q2(states))
-        policy_loss = (probs * (self.current_alpha * log_probs - min_q)).sum(dim=1).mean()
+        policy_loss = (
+            (probs * (self.current_alpha * log_probs - min_q)).sum(dim=1).mean()
+        )
 
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
@@ -215,16 +217,25 @@ class SACAgent(AbstractAgent):
             alpha_loss = torch.tensor(0.0)
             alpha_value = self.alpha
 
-        for param, target_param in zip(self.q1.parameters(), self.target_q1.parameters()):
+        for param, target_param in zip(
+            self.q1.parameters(), self.target_q1.parameters()
+        ):
             target_param.data.copy_(
                 self.tau * param.data + (1.0 - self.tau) * target_param.data
             )
-        for param, target_param in zip(self.q2.parameters(), self.target_q2.parameters()):
+        for param, target_param in zip(
+            self.q2.parameters(), self.target_q2.parameters()
+        ):
             target_param.data.copy_(
                 self.tau * param.data + (1.0 - self.tau) * target_param.data
             )
 
-        return float(policy_loss.item()), float(critic_loss.item()), float(alpha_loss.item()), float(alpha_value)
+        return (
+            float(policy_loss.item()),
+            float(critic_loss.item()),
+            float(alpha_loss.item()),
+            float(alpha_value),
+        )
 
     def train(
         self,
@@ -261,7 +272,9 @@ class SACAgent(AbstractAgent):
                     self.update()
 
             if step_count % eval_interval == 0:
-                mean_return, std_return = self.evaluate(eval_env, num_episodes=eval_episodes)
+                mean_return, std_return = self.evaluate(
+                    eval_env, num_episodes=eval_episodes
+                )
                 records.append(
                     {
                         "eval_step": step_count,
@@ -276,7 +289,9 @@ class SACAgent(AbstractAgent):
 
         return records
 
-    def evaluate(self, eval_env: gym.Env, num_episodes: int = 10) -> Tuple[float, float]:
+    def evaluate(
+        self, eval_env: gym.Env, num_episodes: int = 10
+    ) -> Tuple[float, float]:
         self.policy.eval()
         returns = []
         with torch.no_grad():

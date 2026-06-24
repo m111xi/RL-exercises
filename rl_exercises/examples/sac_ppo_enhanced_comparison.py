@@ -15,10 +15,11 @@ If you want to run it directly, the script prepends the repository root to sys.p
 
 from __future__ import annotations
 
+from typing import Any
+
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -34,9 +35,9 @@ from rliable.plot_utils import plot_sample_efficiency_curve
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from rl_exercises.week_6.actor_critic import set_seed
 from rl_exercises.week_6.ppo import PPOAgent
 from rl_exercises.week_6.sac import SACAgent
-from rl_exercises.week_6.actor_critic import set_seed
 
 
 def load_ppo_config() -> Any:
@@ -134,13 +135,17 @@ def train_ppo(
     records: list[dict[str, Any]] = []
     state, _ = env.reset(seed=seed)
     step_count = 0
-    trajectory: list[tuple[np.ndarray, int, torch.Tensor, torch.Tensor, float, float, np.ndarray]] = []
+    trajectory: list[
+        tuple[np.ndarray, int, torch.Tensor, torch.Tensor, float, float, np.ndarray]
+    ] = []
 
     while step_count < total_steps:
         action, logp, ent, val = agent.predict(state)
         next_state, reward, term, trunc, _ = env.step(action)
         done = term or trunc
-        trajectory.append((state, action, logp, ent, float(reward), float(done), next_state))
+        trajectory.append(
+            (state, action, logp, ent, float(reward), float(done), next_state)
+        )
         state = next_state
         step_count += 1
 
@@ -169,7 +174,9 @@ def train_ppo(
     return output_file
 
 
-def aggregate_results(result_dir: Path, algorithms: list[str], seeds: list[int]) -> None:
+def aggregate_results(
+    result_dir: Path, algorithms: list[str], seeds: list[int]
+) -> None:
     eval_scores: dict[str, np.ndarray] = {}
     eval_steps: np.ndarray | None = None
 
@@ -231,8 +238,12 @@ def parse_args() -> argparse.Namespace:
         help="Random seeds to run",
     )
     parser.add_argument("--steps", type=int, default=20000, help="Total training steps")
-    parser.add_argument("--eval-interval", type=int, default=5000, help="Evaluation interval")
-    parser.add_argument("--eval-episodes", type=int, default=5, help="Evaluation episodes")
+    parser.add_argument(
+        "--eval-interval", type=int, default=5000, help="Evaluation interval"
+    )
+    parser.add_argument(
+        "--eval-episodes", type=int, default=5, help="Evaluation episodes"
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,

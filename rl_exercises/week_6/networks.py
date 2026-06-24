@@ -50,7 +50,6 @@ class ValueNetwork(nn.Module):  # critic network
         self.fc1 = nn.Linear(self.state_dim, hidden_size)
         self.fc2 = nn.Linear(hidden_size, 1)
 
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Compute scalar value estimates for given input state(s).

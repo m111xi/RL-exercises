@@ -1,4 +1,4 @@
-﻿"""train_reinforce.py
+"""train_reinforce.py
 
 Run the REINFORCE experiments for the Week 5 level-2 tasks with a fixed
 sequence of runs. This script is intentionally hardcoded and does not use
@@ -16,9 +16,10 @@ appended to `rl_exercises/week_5/observations_l2.txt`.
 
 from __future__ import annotations
 
+from typing import Dict, List, Optional
+
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 # Ensure repository root is on sys.path so imports work when running the script directly
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,7 +29,6 @@ if str(ROOT) not in sys.path:
 import gymnasium as gym
 import numpy as np
 import pandas as pd
-
 from rl_exercises.week_5.policy_gradient import REINFORCEAgent, set_seed
 
 
@@ -98,9 +98,9 @@ def run_single_seed(
 
     seed_dir = output_dir / f"seed_{seed}"
     seed_dir.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame({"episode": range(1, len(train_rewards) + 1), "reward": train_rewards}).to_csv(
-        seed_dir / "train_rewards.csv", index=False
-    )
+    pd.DataFrame(
+        {"episode": range(1, len(train_rewards) + 1), "reward": train_rewards}
+    ).to_csv(seed_dir / "train_rewards.csv", index=False)
     pd.DataFrame({"episode": eval_episodes_list, "reward": eval_rewards}).to_csv(
         seed_dir / "eval_rewards.csv", index=False
     )
@@ -111,7 +111,13 @@ def run_single_seed(
 
 def compare_with_dqn(target_reward: float = 350.0) -> Optional[Dict[str, float]]:
     base = ROOT / "results"
-    reward_columns = ["reward", "train_rewards", "train_reward", "return", "episode_reward"]
+    reward_columns = [
+        "reward",
+        "train_rewards",
+        "train_reward",
+        "return",
+        "episode_reward",
+    ]
     for sub in ("qlearning", "dqn"):
         path = base / sub
         if not path.exists():
@@ -139,7 +145,11 @@ def compare_with_dqn(target_reward: float = 350.0) -> Optional[Dict[str, float]]
             meets = df[df[col] >= target_reward]
             if not meets.empty:
                 first_row = meets.iloc[0]
-                episode_value = int(first_row["episode"]) if "episode" in df.columns else int(first_row.name)
+                episode_value = (
+                    int(first_row["episode"])
+                    if "episode" in df.columns
+                    else int(first_row.name)
+                )
                 return {sub: float(episode_value)}
     return None
 
@@ -227,7 +237,9 @@ def main() -> None:
     with obs_file.open("a", encoding="utf-8") as fh:
         fh.write("\n---\n")
         fh.write("Automatic REINFORCE experiment run\n")
-        fh.write("Baseline: CartPole-v1, seeds=0,1,2, episodes=300, lr=1e-2, gamma=0.99\n")
+        fh.write(
+            "Baseline: CartPole-v1, seeds=0,1,2, episodes=300, lr=1e-2, gamma=0.99\n"
+        )
         fh.write("Trajectory sweep: CartPole-v1, max_steps=50,100,200,500, seeds=0,1\n")
         fh.write("LunarLander-v2: seeds=0,1, episodes=300, lr=1e-3, hidden_size=256\n")
         fh.write(f"DQN/Q-learning comparison: {dqn_comparison}\n")
