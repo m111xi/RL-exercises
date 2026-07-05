@@ -1,0 +1,69 @@
+Level 1: HPO generalization (across seeds)
+Trial 0: score=124.2  {'lr': 0.01, 'gamma': 0.98, 'epsilon_decay': 1000, 'rnd_reward_weight': 0.1, 'target_update_freq': 500}
+Trial 1: score=9.8  {'lr': 0.01, 'gamma': 0.95, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.5, 'target_update_freq': 1000}
+Trial 2: score=193.8  {'lr': 0.001, 'gamma': 0.98, 'epsilon_decay': 1000, 'rnd_reward_weight': 0.0, 'target_update_freq': 250}
+Trial 3: score=209.8  {'lr': 0.001, 'gamma': 0.99, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.5, 'target_update_freq': 250}
+Trial 4: score=10.4  {'lr': 0.005, 'gamma': 0.95, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.0, 'target_update_freq': 1000}
+
+Best config (on seed 0): {'lr': 0.001, 'gamma': 0.99, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.5, 'target_update_freq': 250}
+Score on tuning seed: 209.8
+
+Seed 10: tuned=277.0  default=207.2
+Seed 11: tuned=190.0  default=208.6
+Seed 12: tuned=270.0  default=241.0
+Seed 13: tuned=154.2  default=159.8
+
+Tuned    over test seeds: mean=222.8 +/- 52.3
+Default  over test seeds: mean=204.1 +/- 29.0
+
+Observation: The tuned config generalizes better on average than the default. But the spread across seeds is there. Tuning on a single seed is risky.
+
+
+
+
+Level 2: Multi-fidelity in RL
+Low-fidelity ranking (after few steps):
+  rnd_lr5e-4           16.6
+  rnd_strong           15.0
+  no_rnd_lr5e-4        12.8
+  no_rnd_lr1e-2        11.2
+  no_rnd_lr1e-3        11.0
+  rnd_lr1e-3            9.6
+
+Full ranking (all at high fidelity, reference):
+  rnd_lr1e-3          225.0
+  rnd_strong          223.0
+  no_rnd_lr1e-3       207.0
+  rnd_lr5e-4          196.2
+  no_rnd_lr5e-4       183.2
+  no_rnd_lr1e-2        91.4
+
+Winner according to successive halving: rnd_lr5e-4
+True winner (full budget):             rnd_lr1e-3
+
+The true winner was ranked #6 out of 6 in the low-fidelity ranking.
+Observation: Successive halving did not find the best config. Early scores were misleading. An explorative config needed more time to show its potential and got cut too early.
+
+
+
+
+Level 3: Context & hyperparameters
+(reproducing the idea from Eimer et al. 2022)
+Context low_gravity: best config score=401.2
+    {'lr': 0.0005, 'gamma': 0.98, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.5}
+Context normal: best config score=269.6
+    {'lr': 0.0005, 'gamma': 0.95, 'epsilon_decay': 4000, 'rnd_reward_weight': 0.5}
+Context high_gravity: best config score=344.0
+    {'lr': 0.005, 'gamma': 0.98, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.1}
+
+Transfer matrix (row=tuned in, column=tested in):
+Config\Test     low_gravity        normal  high_gravity
+low_gravity           401.2         244.8         201.4
+normal                354.4         269.6         170.0
+high_gravity          146.0          94.6         344.0
+
+In context low_gravity: native config=401.2, best foreign (low_gravity)=401.2
+In context normal: native config=269.6, best foreign (normal)=269.6
+In context high_gravity: native config=344.0, best foreign (high_gravity)=344.0
+
+Observation: The best hyperparameters per context differ just like in the paper. The HPs are context dependent (situational). In this run the native config was best in every context, so there was no case where a foreign config won. But the transfer matrix shows the transfer is asymmetric. The low_gravity config still does okay in the other contexts, while the high_gravity config drops a lot in low/normal (146.0 / 94.6). So even when it doesn't fully flip, tuning in one context doesn't guarantee good performance in another.

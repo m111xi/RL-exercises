@@ -1,0 +1,34 @@
+Level 3: Context & hyperparameters
+Context low_gravity: best config score=401.2
+    {'lr': 0.0005, 'gamma': 0.98, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.5}
+Context normal: best config score=269.6
+    {'lr': 0.0005, 'gamma': 0.95, 'epsilon_decay': 4000, 'rnd_reward_weight': 0.5}
+Context high_gravity: best config score=344.0
+    {'lr': 0.005, 'gamma': 0.98, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.1}
+
+Transfer matrix (row=tuned in, column=tested in):
+Config\Test     low_gravity        normal  high_gravity
+low_gravity           401.2         244.8         201.4
+normal                354.4         269.6         170.0
+high_gravity          146.0          94.6         344.0
+
+In context low_gravity: native config=401.2, best foreign (low_gravity)=401.2
+In context normal: native config=269.6, best foreign (normal)=269.6
+In context high_gravity: native config=344.0, best foreign (high_gravity)=344.0
+
+Interpretation:
+The results suggest that hyperparameter performance is strongly context-dependent.
+Each context achieves its best score with its own native configuration,
+and no single configuration generalizes best across all contexts.
+This is especially visible for the high_gravity setting:
+the configuration tuned for high_gravity performs very well in its own context, 
+but transfers poorly to low_gravity and normal. 
+In contrast, the low_gravity and normal configurations 
+transfer somewhat better to each other, 
+which indicates that these two contexts are more similar from the optimizer’s perspective.
+
+Overall, the experiment reproduces the main observation of the paper:
+hyperparameters in contextual RL are highly situational. 
+A configuration that is optimal in one context may become clearly suboptimal in another,
+so tuning should ideally be performed with the target context in mind rather than assuming 
+that one globally good configuration exists.

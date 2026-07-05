@@ -1,0 +1,21 @@
+Level 1: HPO generalization (across seeds)
+Trial 0: score=124.2  {'lr': 0.01, 'gamma': 0.98, 'epsilon_decay': 1000, 'rnd_reward_weight': 0.1, 'target_update_freq': 500}
+Trial 1: score=9.8  {'lr': 0.01, 'gamma': 0.95, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.5, 'target_update_freq': 1000}
+Trial 2: score=193.8  {'lr': 0.001, 'gamma': 0.98, 'epsilon_decay': 1000, 'rnd_reward_weight': 0.0, 'target_update_freq': 250}
+Trial 3: score=209.8  {'lr': 0.001, 'gamma': 0.99, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.5, 'target_update_freq': 250}
+Trial 4: score=10.4  {'lr': 0.005, 'gamma': 0.95, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.0, 'target_update_freq': 1000}
+
+Best config (on seed 0): {'lr': 0.001, 'gamma': 0.99, 'epsilon_decay': 2000, 'rnd_reward_weight': 0.5, 'target_update_freq': 250}
+Score on tuning seed: 209.8
+
+Seed 10: tuned=277.0  default=207.2
+Seed 11: tuned=190.0  default=208.6
+Seed 12: tuned=270.0  default=241.0
+Seed 13: tuned=154.2  default=159.8
+
+Tuned    over test seeds: mean=222.8 +/- 52.3
+Default  over test seeds: mean=204.1 +/- 29.0
+
+Overall, this matches the expectation that HPO in RL does not perfectly generalize across seeds. 
+Tuning on one seed can improve average performance, 
+but the selected configuration may also partially overfit to the randomness of that seed.
