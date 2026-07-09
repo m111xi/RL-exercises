@@ -1,0 +1,21 @@
+Level 2: Multi-fidelity in RL
+Low-fidelity ranking (after few steps):
+  rnd_lr5e-4           16.6
+  rnd_strong           15.0
+  no_rnd_lr5e-4        12.8
+  no_rnd_lr1e-2        11.2
+  no_rnd_lr1e-3        11.0
+  rnd_lr1e-3            9.6
+
+Full ranking (all at high fidelity, reference):
+  rnd_lr1e-3          225.0
+  rnd_strong          223.0
+  no_rnd_lr1e-3       207.0
+  rnd_lr5e-4          196.2
+  no_rnd_lr5e-4       183.2
+  no_rnd_lr1e-2        91.4
+
+Winner according to successive halving: rnd_lr5e-4
+True winner (full budget):             rnd_lr1e-3
+
+The true winner was ranked #6 out of 6 in the low-fidelity ranking.
